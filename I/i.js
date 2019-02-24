@@ -75,7 +75,7 @@ function count(rows, columns, lines) {
 
   const startProcess = new Date();
   const bitSeed = [];
-  for (let i = 0; i < (columns + 1) / 2; i++) bitSeed.push(1);
+  for (let i = 0; i < (columns - 1) / 2; i++) bitSeed.push(1);
   let result = 0;
   for (let r = 0; r < rows; r++) {
     const bit = createBIT(bitSeed);
@@ -112,11 +112,12 @@ function solve(filename) {
   const [rows, columns] = totals.split(' ').map(v => parseInt(v));
 
   let result = count(rows, columns, lines);
-  result += count(rows, columns,
-    lines.map(r => r + ' '.repeat(columns * 2 - r.length - 1))
-      .map(r => r.split('').reverse().join(''))
-      .reverse()
-  );
+  const startInvert = new Date();
+  const invertedLines = lines.map(r => r + ' '.repeat(columns * 2 - r.length - 1))
+    .map(r => r.split('').reverse().join(''))
+    .reverse();
+  console.log(`  invert time: ${new Date() - startInvert}ms`);
+  result += count(rows, columns, invertedLines);
 
   const end = new Date();
   console.log(`  total time: ${end - start}ms`);
@@ -133,4 +134,3 @@ const inputDirectory = path.join(__dirname, '../../icpc2018data/I-triangles/');
 for (let filename of fs.readdirSync(inputDirectory).filter(f => f.endsWith('.in'))) {
   solve(path.join(inputDirectory, filename));
 }
-// solve(path.join(inputDirectory, "sample-2.in"));

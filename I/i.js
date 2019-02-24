@@ -34,63 +34,50 @@ const createBIT = (input) => {
   }
 }
 
-function count(rows, columns, lines) {
+function count(rows, columns, grid) {
   const startPrep = new Date();
-  const vertexes = {};
-  const offset = lines[0][0] === "x" ? 0 : 1;
-  for (let r = 0; r < rows; r++) {
-    vertexes[r] = {};
-    for (let c = (r + offset) % 2; c < columns; c += 2) {
-      vertexes[r][c] = {
-        l: 0,
-        ul: 0,
-        ur: 0
-      }
-    }
-  }
-  const horizontalLine = /---/g;
-  const rightLine = /\\/g;
-  const leftLine = /\//g;
-  let match;
-  for (let [r, line] of lines.entries()) {
-    if (r % 2 === 0) {
-      while (match = horizontalLine.exec(line)) {
-        const startC = (match.index - 1) / 2;
-        const startR = r / 2;
-        vertexes[startR][startC + 2].l = vertexes[startR][startC].l + 1;
-      }
-    } else {
-      const startR = (r - 1) / 2;
-      while (match = rightLine.exec(line)) {
-        const startC = (match.index - 1) / 2;
-        vertexes[startR + 1][startC + 1].ul = vertexes[startR][startC].ul + 1;
-      }
-      while (match = leftLine.exec(line)) {
-        const startC = (match.index + 1) / 2;
-        vertexes[startR + 1][startC - 1].ur = vertexes[startR][startC].ur + 1;
-      }
+  const offset = grid[0] === 1 ? 0 : 1;
+  const l = new Uint32Array(rows * columns);
+  const ur = new Uint32Array(rows * columns);
+  const ul = new Uint32Array(rows * columns);
+  const gridWidth = 2 * columns - 1;
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === 2) { // '-'
+      const r = Math.floor(i / gridWidth) / 2;
+      const c = ((i - 1) - (r * 2 * gridWidth)) / 2;
+      l[r * columns + c + 2] = l[r * columns + c] + 1;
+      i += 3;
+    } else if (grid[i] === 3) { // '/'
+      const r = (Math.floor(i / gridWidth) - 1) / 2;
+      const c = ((i + 1) - (r * 2 + 1) * gridWidth) / 2;
+      ur[(r + 1) * columns + c - 1] = ur[r * columns + c] + 1;
+      i++;
+    } else if (grid[i] === 4) { // '\'
+      const r = (Math.floor(i / gridWidth) - 1) / 2;
+      const c = ((i - 1) - (r * 2 + 1) * gridWidth) / 2;
+      ul[(r + 1) * columns + c + 1] = ul[r * columns + c] + 1;
+      i++;
     }
   }
   console.log(`  prep time: ${new Date() - startPrep}ms`);
 
   const startProcess = new Date();
-  const bitSeed = [];
-  for (let i = 0; i < (columns - 1) / 2; i++) bitSeed.push(1);
+  const bitSeed = new Array(Math.floor((columns - 1) / 2)).fill(1);
   let result = 0;
   for (let r = 0; r < rows; r++) {
     const bit = createBIT(bitSeed);
     const events = {};
     for (let c = (r + offset) % 2; c < columns; c += 2) {
-      const vertex = vertexes[r][c];
-      const currentIndex = Math.floor(c / 2);
-      const clearAt = currentIndex + vertex.ur + 1;
+      const index = r * columns + c;
+      const bitIndex = Math.floor(c / 2);
+      const clearAt = bitIndex + ur[index] + 1;
       if (events[clearAt] === undefined) events[clearAt] = new Set();
-      events[clearAt].add(currentIndex);
-      if (events[currentIndex] !== undefined) {
-        for (let event of events[currentIndex]) bit.update(event, -1);
+      events[clearAt].add(bitIndex);
+      if (events[bitIndex] !== undefined) {
+        for (let event of events[bitIndex]) bit.update(event, -1);
       }
-      const maxSize = Math.min(vertex.l, vertex.ul);
-      if (maxSize > 0) result += bit.rangeQuery(currentIndex - maxSize, currentIndex - 1);
+      const maxSize = Math.min(l[index], ul[index]);
+      if (maxSize > 0) result += bit.rangeQuery(bitIndex - maxSize, bitIndex - 1);
     }
   }
   console.log(`  process time: ${new Date() - startProcess}ms`);
@@ -108,16 +95,28 @@ function solve(filename) {
   const text = fs.readFileSync(filename, 'UTF8').trim();
   console.log(`  read time: ${new Date() - startRead}ms`);
 
-  const [totals, ...lines] = text.split('\n');
+  const startParse = new Date();
+  const totals = text.substring(0, text.indexOf('\n'));
+  const figure = text.substring(text.indexOf('\n') + 1);
   const [rows, columns] = totals.split(' ').map(v => parseInt(v));
+  const width = 2 * columns - 1;
+  const height = 2 * rows - 1;
+  const grid = new Uint8Array(width * height);
+  for (let i = 0, r = 0, c = 0; i < figure.length; i++, c++) {
+    switch(figure.charAt(i)) {
+      case '\n': r++; c = -1; break;
+      case 'x': grid[r * width + c] = 1; break;
+      case '-': grid[r * width + c] = 2; break;
+      case '/': grid[r * width + c] = 3; break;
+      case '\\': grid[r * width + c] = 4; break;
+      default: break;
+    }
+  }
+  const grid2 = new Uint8Array(grid);
+  grid2.reverse();
+  console.log(`  parse time: ${new Date() - startParse}ms`);
 
-  let result = count(rows, columns, lines);
-  const startInvert = new Date();
-  const invertedLines = lines.map(r => r + ' '.repeat(columns * 2 - r.length - 1))
-    .map(r => r.split('').reverse().join(''))
-    .reverse();
-  console.log(`  invert time: ${new Date() - startInvert}ms`);
-  result += count(rows, columns, invertedLines);
+  const result = count(rows, columns, grid) + count(rows, columns, grid2);
 
   const end = new Date();
   console.log(`  total time: ${end - start}ms`);

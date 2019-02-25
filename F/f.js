@@ -55,9 +55,7 @@ function solve(filename) {
       const spaces = rowToSpaces[r];
       if (spaces.size === 0) continue;
       for (let s of spaces) {
-        needOneOf.add(s - 1);
         needOneOf.add(s);
-        needOneOf.add(s + 1);
       }
       let end = false;
       let best = 1;
@@ -66,12 +64,12 @@ function solve(filename) {
         const currentRow = rowToSpaces[tr];
         const nextNeedOneOf = new Set();
         for (let ts of needOneOf) {
-          if (currentRow.has(ts)) {
-            currentRow.delete(ts);
-            end = false;
-            nextNeedOneOf.add(ts - 1);
-            nextNeedOneOf.add(ts);
-            nextNeedOneOf.add(ts + 1);
+          for (let i = ts - 1; i <= ts + 1; i++) {
+            if (currentRow.has(i)) {
+              currentRow.delete(i);
+              end = false;
+              nextNeedOneOf.add(i);
+            }
           }
         }
         needOneOf = nextNeedOneOf;

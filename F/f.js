@@ -7,84 +7,58 @@ function solve(filename) {
   const start = new Date();
 
   const startRead = new Date();
-  const text = fs.readFileSync(filename, 'UTF8').trim();
-  console.log(`  read time: ${new Date() - startRead}ms`);
-
-  const [wordCount, ...lines] = text.split('\n');
-  const words = lines.reduce((a, l) => {
-    l.split(' ').forEach(w => a.push(w.length));
-    return a;
-  }, []);
-
+  const input = fs.readFileSync(filename, 'UTF8').trim();
+  const text = input.substring(input.indexOf('\n') + 1);
+  const words = text.split(/\n| /).map(w => w.length);
   const longest = words.reduce((a, w) => w > a ? w : a, 0);
+  console.log(`  read time: ${new Date() - startRead}ms`);
 
   let bestRiver = 0;
   let bestWidth = longest;
 
-  let prepTime = 0;
-  let processTime = 0;
-
+  const startProcess = new Date();
+  let prev = new Uint32Array(text.length);
+  let current = new Uint32Array(text.length);
   for (let width = longest; width <= text.length; width++) {
-
-    const startPrep = new Date();
-    const rowToSpaces = [];
-    let cursor = 0;
-    const widthPlusOne = width + 1;
-    let current = new Set();
-    for (let w of words) {
-      const nextCursor = cursor + w + 1;
-      if (nextCursor > widthPlusOne) {
-        rowToSpaces.push(current);
-        current = new Set();
-        cursor = w + 1;
+    let rows = 1;
+    let cursor = words[0];
+    for (let index = 1; index < words.length; index++) {
+      const nextCursor = cursor + words[index] + 1;
+      if (nextCursor > width) {
+        for (let i = 0; i < width; i++) {
+          if (prev[i] > 0) {
+            if (prev[i] > bestRiver) {
+              bestRiver = prev[i];
+              bestWidth = width;
+            }
+            prev[i] = 0;
+          }
+        }
+        const temp = current; current = prev; prev = temp;
+        cursor = words[index];
+        rows++;
       } else {
-        current.add(cursor);
+        current[cursor] = Math.max(prev[cursor - 1], prev[cursor], prev[cursor + 1]) + 1;
+        prev[cursor - 1] = 0;
+        prev[cursor] = 0;
+        if (nextCursor - cursor > 2) prev[cursor + 1] = 0;
         cursor = nextCursor;
       }
     }
-    rowToSpaces.push(current);
-    rowToSpaces[0].delete(0);
-    prepTime += new Date() - startPrep;
 
-    const rowCount = rowToSpaces.length;
-    if (rowCount <= bestRiver) break;
-
-    const startProcess = new Date();
-    for (let r = 0; r < rowCount && rowCount - r > bestRiver; r++) {
-      let needOneOf = new Set();
-      const spaces = rowToSpaces[r];
-      if (spaces.size === 0) continue;
-      for (let s of spaces) {
-        needOneOf.add(s);
-      }
-      let end = false;
-      let best = 1;
-      for (let tr = r + 1; tr < rowCount && !end; tr++) {
-        end = true;
-        const currentRow = rowToSpaces[tr];
-        const nextNeedOneOf = new Set();
-        for (let ts of needOneOf) {
-          for (let i = ts - 1; i <= ts + 1; i++) {
-            if (currentRow.has(i)) {
-              currentRow.delete(i);
-              end = false;
-              nextNeedOneOf.add(i);
-            }
-          }
-        }
-        needOneOf = nextNeedOneOf;
-        if (!end) best++;
-      }
-      if (best > bestRiver) {
-        bestRiver = best;
+    for (let i = 0; i < width; i++) {
+      const max = Math.max(prev[i], current[i]);
+      if (max > bestRiver) {
+        bestRiver = max;
         bestWidth = width;
       }
+      prev[i] = 0;
+      current[i] = 0;
     }
-    processTime += new Date() - startProcess;
-  }
 
-  console.log(`  prep time: ${prepTime}ms`);
-  console.log(`  process time: ${processTime}ms`);
+    if (rows <= bestRiver) break;
+  }
+  console.log(`  process time: ${new Date() - startProcess}ms`);
 
   const result = `${bestWidth} ${bestRiver}`;
 

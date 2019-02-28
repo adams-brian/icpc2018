@@ -1,5 +1,5 @@
 function solve(arr) {
-  const total = arr.reduce((p, c) => p + c, 0);
+  const total = arr.reduce((a, c) => a + c, 0);
   const count = arr.length;
   for (let i = 0; i < total; i++) {
     for (let j = 0; j < count; j++) {
@@ -9,13 +9,13 @@ function solve(arr) {
 }
 
 for (let i = 0; i < 10; i++) {
-  // generate sample data (array of 5000 random numbers 1-10)
-  const a = [];
+  // generate some sample data (array of 5000 random numbers 1-10)
+  const data = [];
   for (let i = 0; i < 5000; i++) {
-    a.push(Math.floor(Math.random() * 9.999) + 1);
+    data.push(Math.floor(Math.random() * 10) + 1);
   }
 
   const start = new Date();
-  solve(a);
+  solve(data);  // run solve on the data
   console.log(`${i + 1}: ${new Date() - start}ms`);
 }

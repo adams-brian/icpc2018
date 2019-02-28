@@ -9,8 +9,10 @@ function solve(filename) {
   const startRead = new Date();
   const input = fs.readFileSync(filename, 'UTF8').trim();
   const text = input.substring(input.indexOf('\n') + 1);
-  const words = text.split(/\n| /).map(w => w.length);
-  const longest = words.reduce((a, w) => w > a ? w : a, 0);
+  const words = [];
+  for (let w of text.split(/\n| /)) words.push(w.length);
+  let longest = 0;
+  for (let w of words) longest = w > longest ? w : longest;
   console.log(`  read time: ${new Date() - startRead}ms`);
 
   let bestRiver = 0;
